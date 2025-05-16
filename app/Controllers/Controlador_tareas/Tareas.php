@@ -20,31 +20,24 @@ class Tareas extends BaseController
     public function getIndex()
     {
         $tareas_db = new Tareas_db();
-        $subtareas_db = new Subtareas_db();
-        $user = session()->get('user_id'); // Obtener el ID del usuario de la sesión
+        $subtareas_db = new Subtareas_db(); // Usar el nombre de clase correcto
+        $user_id = session()->get('user_id'); 
 
-        // Obtén todas las tareas
-        $tareas = $tareas_db->All_tareas_user($user);  //MANEJAR CON S
+        $tareas = $tareas_db->All_tareas_user($user_id); 
 
-        // Agrega los datos de subtareas a cada tarea
-        foreach ($tareas as &$tarea) {
-            $id_tarea = $tarea['id_tarea'];
-
-            // Calcula el total de subtareas y las completadas
-            $tarea['total_subtareas'] = $subtareas_db->Devolver_numero_subtareas($id_tarea);
-            $tarea['subtareas_completadas'] = $subtareas_db->Devolver_numero_subtareas_estado($id_tarea, 'completada');
-            $tarea['subtareas'] = $subtareas_db->All_subtareas($id_tarea);
+        if (is_array($tareas)) { // Asegurarse que $tareas es un array antes del foreach
+            foreach ($tareas as &$tarea) { // Usar referencia para modificar el array original
+                if (isset($tarea['id_tarea'])) {
+                    $id_tarea = $tarea['id_tarea'];
+                    $tarea['total_subtareas'] = $subtareas_db->Devolver_numero_subtareas($id_tarea);
+                    $tarea['subtareas_completadas'] = $subtareas_db->Devolver_numero_subtareas_estado($id_tarea, 'completada');
+                    $tarea['subtareas'] = $subtareas_db->All_subtareas($id_tarea);
+                }
+            }
+            unset($tarea); // Romper la referencia del último elemento
         }
 
         return view('vistas_tareas/index', ['tareas' => $tareas]);
-
-        /*
-            //return view('/vistas_tareas/index'); 
-        $tareas_db = new Tareas_db();
-        //$tareas = $tareas_db->All_tareas_user(session()->get('user_id'));
-        $tareas = $tareas_db->All_tareas_user(1);  //MANEJAR CON SESSION
-        return view('vistas_tareas/index', ['tareas' => $tareas]);
-        */
     }
 
     public function getEditar_tarea($id_tarea)
@@ -59,7 +52,8 @@ class Tareas extends BaseController
         return view('vistas_tareas/editar_tarea', [
             'tarea' => $tarea,
             'colaboradores' => $colaboradores,
-            'subtareas' => $subtareas
+            'subtareas' => $subtareas,
+            'validation' => session()->getFlashdata('validation') // Para mostrar errores si vienen de un redirect
         ]);
     }
 
@@ -376,18 +370,34 @@ class Tareas extends BaseController
         $tareas_db = new Tareas_db();
 
         if (!$id_tarea || !$accion) {
-            return redirect()->back()->with('error', 'Datos incompletos');
+            return redirect()->back()->with('error', 'Datos incompletos para la acción.');
         }
 
         switch ($accion) {
+            case 'editar':
+                return redirect()->to(base_url('controlador_tareas/tareas/editar_tarea/' . $id_tarea));
+            
             case 'archivar':
-                $tareas_db->archivar_tarea($id_tarea, 'archivada');
-                return redirect()->back()->with('success', 'Tarea archivada');
+                $tarea_actual = $tareas_db->find($id_tarea); // Obtener la tarea
+                if ($tarea_actual && $tarea_actual['estado'] === 'completada') {
+                    if ($tareas_db->archivar_tarea($id_tarea, 'archivada')) { // Asumo que archivar_tarea existe y funciona
+                        return redirect()->back()->with('success', 'Tarea archivada correctamente.');
+                    } else {
+                        return redirect()->back()->with('error', 'No se pudo archivar la tarea.');
+                    }
+                } else {
+                    return redirect()->back()->with('error', 'Solo se pueden archivar tareas que estén completadas.');
+                }
+
             case 'eliminar':
-                $tareas_db->borrar_tarea($id_tarea);
-                return redirect()->back()->with('success', 'Tarea eliminada');
+                // Considera añadir lógica para eliminar subtareas y colaboradores asociados si es necesario
+                if ($tareas_db->borrar_tarea($id_tarea)) { // Asumo que borrar_tarea existe y funciona
+                    return redirect()->back()->with('success', 'Tarea eliminada correctamente.');
+                } else {
+                    return redirect()->back()->with('error', 'No se pudo eliminar la tarea.');
+                }
             default:
-                return redirect()->back();
+                return redirect()->back()->with('error', 'Acción no reconocida.');
         }
     }
 
@@ -469,7 +479,9 @@ class Tareas extends BaseController
             'tareas' => $tareas,
             'colaboradores' => $colaboradores,
             'id_tarea_modal' => $id_tarea,
-            'abrir_modal' => true
+            'abrir_modal' => true,
+            'abrir_modal_subtarea' => false // Asegurarse que el modal de subtarea no se abra
+
         ]);
     }
 

@@ -8,104 +8,181 @@ use App\Models\db_tareas\Subtareas_db; // Asegúrate de que la ruta sea correcta
 use App\Models\db_tareas\Colaboradores_db; // Asegúrate de que la ruta sea correcta
 use App\Models\db_tareas\Tareas_db; // Asegúrate de que la ruta sea correcta
 use App\Controllers\BaseController;
-use App\Models\Colaboradores_subtareas_db;
+use App\Models\db_tareas\Colaboradores_subtareas_db;
 
-class Subtareas extends BaseController{
+class Subtareas extends BaseController
+{
 
-    public function __construct(){
-        helper('form');
-        $session = \Config\Services::session();
+    public function __construct()
+    {
+        helper(['form', 'url', 'text']);
     }
 
-    public function getIndex()
+    public function getCompartir_subtarea()
     {
-        //return view('/vistas_tareas/index'); 
+        $id_tarea_padre = $this->request->getGet('id_tarea'); 
+        $id_subtarea    = $this->request->getGet('id_subtarea');
+
+        if (empty($id_subtarea) || empty($id_tarea_padre)) { // Se necesitan ambos IDs
+            return redirect()->to(base_url('controlador_tareas/tareas'))->with('error', 'IDs de tarea o subtarea no proporcionados.');
+        }
+
         $subtareas_db = new Subtareas_db();
-        //$tareas = $tareas_db->All_tareas_user(session()->get('user_id'));
-        $subtareas = $subtareas_db->All_subtareas(1);  //MANEJAR CON SESSION
+        // Usar el método para clave compuesta o where() directamente
+        $subtarea_actual = $subtareas_db->findSubtareaCompuesta($id_tarea_padre, $id_subtarea);
+        // Alternativamente:
+        // $subtarea_actual = $subtareas_db->where('id_tarea', $id_tarea_padre)
+        //                                ->where('id_subtarea', $id_subtarea)
+        //                                ->first();
+
+        if (!$subtarea_actual) {
+            return redirect()->to(base_url('controlador_tareas/tareas'))->with('error', 'Subtarea no encontrada.');
+        }
         
-        return view('vistas_tareas/index', ['subtareas' => $subtareas]);
-    }
+        $colaboradores_subtareas_model = new Colaboradores_subtareas_db(); 
+        $colaboradores_de_subtarea = $colaboradores_subtareas_model->All_subcolaboradores($id_subtarea);
 
-    public function getTachar_subtarea($id_subtarea,$id_tarea ,$estado='completado')
-    {
-        
-        $subtareas_db = new Subtareas_db();
-        $subtareas_db->cambiar_estado_subtarea($id_subtarea,$id_tarea ,$estado);
-        return redirect()->to(base_url('controlador_tareas/tareas')); // Redirige a la vista de subtareas
-    }
-
-     public function getCompartir_subtarea()
-    {
-        $id_tarea = $this->request->getGet('id_tarea');
-        $id_subtarea = $this->request->getGet('id_subtarea');
-        $colaboradores_subtareas_db = new Colaboradores_db();
-        $colaboradores = $colaboradores_subtareas_db->All_subcolaboradores($id_subtarea);
-
-        // Puedes volver a cargar las tareas si quieres que la vista siga igual
         $tareas_db = new Tareas_db();
-        $tareas = $tareas_db->findAll();
+        $user_id = session()->get('user_id'); 
+        $tareas = $tareas_db->All_tareas_user($user_id);
+
+        foreach ($tareas as &$tarea_loop) { 
+            if (isset($tarea_loop['id_tarea'])) {
+                $tarea_loop['total_subtareas'] = $subtareas_db->Devolver_numero_subtareas($tarea_loop['id_tarea']);
+                $tarea_loop['subtareas_completadas'] = $subtareas_db->Devolver_numero_subtareas_estado($tarea_loop['id_tarea'], 'completada');
+                $tarea_loop['subtareas'] = $subtareas_db->All_subtareas($tarea_loop['id_tarea']);
+            }
+        }
+        unset($tarea_loop); 
 
         return view('vistas_tareas/index', [
-            'tareas' => $tareas,
-            'colaboradores' => $colaboradores,
-            'id_tarea_modal' => $id_tarea,
-            'id_subtarea_modal' => $id_subtarea,
-            'abrir_modal' => true
+            'tareas'                      => $tareas, 
+            'colaboradores_subtarea_modal'=> $colaboradores_de_subtarea, 
+            'id_tarea_padre_modal'        => $id_tarea_padre, 
+            'id_subtarea_modal'           => $id_subtarea,       
+            'nombre_subtarea_modal'       => $subtarea_actual['nombre'] ?? 'Subtarea', 
+            'abrir_modal_subtarea'        => true             
         ]);
     }
 
-     public function postAgregar_colaborador_subtarea()
+    public function postAgregar_colaborador_subtarea()
     {
-        $id_subtarea = $this->request->getPost('id_subtarea');
-        $correo = $this->request->getPost('correo');
-        $colaboradores_subtareas_db = new Colaboradores_subtareas_db();
-        if ($colaboradores_subtareas_db->existeColaborador_subtarea($id_subtarea, $correo)) {
-            // Ya existe, muestra mensaje de error o ignora
-            return redirect()->back()->with('error', 'El usuario ya fue invitado a esta tarea.');
+        $id_tarea_padre = $this->request->getPost('id_tarea_padre'); 
+        $id_subtarea    = $this->request->getPost('id_subtarea');
+        $correo         = $this->request->getPost('correo');
+
+        if (empty($id_subtarea) || empty($correo) || !filter_var($correo, FILTER_VALIDATE_EMAIL) || empty($id_tarea_padre)) {
+            $redirect_url = empty($id_subtarea) || empty($id_tarea_padre) ? 
+                            site_url('controlador_tareas/tareas') : 
+                            site_url('controlador_tareas/subtareas/compartir_subtarea?id_subtarea=' . $id_subtarea . '&id_tarea=' . $id_tarea_padre);
+            return redirect()->to($redirect_url)
+                             ->with('error_subcolab', 'Datos inválidos para agregar colaborador.')
+                             ->withInput();
+        }
+
+        $colaboradores_subtareas_model = new Colaboradores_subtareas_db();
+        
+        if ($colaboradores_subtareas_model->existeColaborador_subtarea($id_subtarea, $correo)) {
+            return redirect()->to(site_url('controlador_tareas/subtareas/compartir_subtarea?id_subtarea=' . $id_subtarea . '&id_tarea=' . $id_tarea_padre))
+                             ->with('error_subcolab', 'El usuario ya es colaborador de esta subtarea.');
         } else {
-            if ($colaboradores_subtareas_db->Insertar_subcolaborador($id_subtarea, $correo)) {
-                redirect()->to(base_url('controlador_tareas/tareas/compartir?id_subtarea=' . $id_subtarea))
-                    ->with('success', 'Colaborador agregado');
+            if ($colaboradores_subtareas_model->Insertar_subcolaborador($id_subtarea, $correo)) { 
+                return redirect()->to(site_url('controlador_tareas/subtareas/compartir_subtarea?id_subtarea=' . $id_subtarea . '&id_tarea=' . $id_tarea_padre))
+                                 ->with('success_subcolab', 'Colaborador agregado a la subtarea exitosamente, espere que el usuario acepte la invitacion.');
             } else {
-                return redirect()->to(base_url('controlador_tareas/tareas/compartir?id_subtarea=' . $id_subtarea))
-                    ->with('error', 'No se pudo agregar el colaborador, no existe en la base de datos');
+                return redirect()->to(site_url('controlador_tareas/subtareas/compartir_subtarea?id_subtarea=' . $id_subtarea . '&id_tarea=' . $id_tarea_padre))
+                                 ->with('error_subcolab', 'No se pudo agregar el colaborador. Verifique que el correo exista.');
             }
         }
     }
 
-
-
     public function postEliminar_subcolaborador()
     {
-        $id_subtarea = $this->request->getPost('id_subtarea');
-        $correo = $this->request->getPost('correo');
-        $colaboradores_subtareas_db = new Colaboradores_subtareas_db();
+        $id_tarea_padre = $this->request->getPost('id_tarea_padre'); 
+        $id_subtarea    = $this->request->getPost('id_subtarea');
+        $correo         = $this->request->getPost('correo');
+        if (empty($id_subtarea) || empty($correo) || empty($id_tarea_padre)) {
+            $redirect_url = empty($id_subtarea) || empty($id_tarea_padre) ? 
+                            site_url('controlador_tareas/tareas') : 
+                            site_url('controlador_tareas/subtareas/compartir_subtarea?id_subtarea=' . $id_subtarea . '&id_tarea=' . $id_tarea_padre);
+            return redirect()->to($redirect_url)
+                             ->with('error_subcolab', 'Datos incompletos para eliminar colaborador.');
+        }
 
-        if ($colaboradores_subtareas_db->Eliminar_subcolaborador($id_subtarea, $correo)) {
-            return redirect()->to(base_url('controlador_tareas/tareas/compartirsub?id_subtarea=' . $id_subtarea))
-                ->with('success', 'Colaborador eliminado');
+        $colaboradores_subtareas_model = new Colaboradores_subtareas_db();
+
+        if ($colaboradores_subtareas_model->Eliminar_subcolaborador($id_subtarea, $correo)) { 
+            return redirect()->to(site_url('controlador_tareas/subtareas/compartir_subtarea?id_subtarea=' . $id_subtarea . '&id_tarea=' . $id_tarea_padre))
+                             ->with('success_subcolab', 'Colaborador eliminado de la subtarea.');
         } else {
-            return redirect()->to(base_url('controlador_tareas/tareas/compartirsub?id_subtarea=' . $id_subtarea))
-                ->with('error', 'No se pudo eliminar el colaborador');
+            return redirect()->to(site_url('controlador_tareas/subtareas/compartir_subtarea?id_subtarea=' . $id_subtarea . '&id_tarea=' . $id_tarea_padre))
+                             ->with('error_subcolab', 'No se pudo eliminar el colaborador de la subtarea.');
         }
     }
 
+    public function postEliminar_subtarea()
+    {
+        $id_tarea_padre = $this->request->getPost('id_tarea'); // ID de la tarea padre
+        $id_subtarea    = $this->request->getPost('id_subtarea');
 
-      public function postEliminar_subtarea(){
-            $id_tarea = $this->request->getPost('id_tarea');
-    $id_subtarea = $this->request->getPost('id_subtarea');
-    $subtareas_db = new Subtareas_db();
-        if ($subtareas_db->Eliminar_subtarea($id_tarea, $id_subtarea)) {
-        return redirect()->back()->with('success', 'Subtarea eliminada correctamente');
-    } else {
-        return redirect()->back()->with('error', 'No se pudo eliminar la subtarea');
+        if (empty($id_subtarea) || empty($id_tarea_padre)) {
+            return redirect()->back()->with('error', 'ID de tarea o subtarea no proporcionado.');
+        }
+
+        $subtareas_db = new Subtareas_db();
+        
+        $colaboradores_subtareas_model = new Colaboradores_subtareas_db();
+        // Primero eliminar colaboradores de la subtarea para evitar problemas de FK si las tienes
+        $colaboradores_subtareas_model->where('id_subtarea', $id_subtarea)->delete(); 
+
+        // Ahora eliminar la subtarea usando la clave compuesta
+        if ($subtareas_db->Eliminar_subtarea_compuesta($id_tarea_padre, $id_subtarea)) { 
+            return redirect()->back()->with('success', 'Subtarea eliminada correctamente.');
+        } else {
+            $errors = $subtareas_db->errors(); // Puede que no haya errores si la fila no existía
+            log_message('error', 'Error al eliminar subtarea (T:' . $id_tarea_padre . ', S:' . $id_subtarea . '): ' . print_r($errors, true));
+            return redirect()->back()->with('error', 'No se pudo eliminar la subtarea.');
+        }
     }
+    
+    // ... (resto de tus métodos como getTachar_subtarea)
+    public function getTachar_subtarea($id_subtarea, $id_tarea, $nuevo_estado_subtarea = 'completada')
+    {
+        $subtareas_db = new Subtareas_db();
+        $tareas_db = new Tareas_db(); // Instanciar el modelo de Tareas
+
+        // 1. Cambiar el estado de la subtarea
+        if ($subtareas_db->cambiar_estado_subtarea($id_subtarea, $id_tarea, $nuevo_estado_subtarea)) {
+            
+            // 2. Verificar si todas las subtareas de la tarea padre están completadas
+            $total_subtareas = $subtareas_db->Devolver_numero_subtareas($id_tarea);
+            $subtareas_completadas = $subtareas_db->Devolver_numero_subtareas_estado($id_tarea, 'completada');
+
+            $tarea_actual = $tareas_db->find($id_tarea); // Obtener estado actual de la tarea padre
+
+            if ($total_subtareas > 0 && $total_subtareas == $subtareas_completadas) {
+                // Todas las subtareas están completadas, marcar la tarea principal como 'completada'
+                if ($tarea_actual && $tarea_actual['estado'] !== 'completada') {
+                    $tareas_db->update($id_tarea, ['estado' => 'completada']);
+                    session()->setFlashdata('info', 'Estado de subtarea actualizado. ¡Todas las subtareas completadas, tarea principal marcada como completada!');
+                } else {
+                     session()->setFlashdata('info', 'Estado de subtarea actualizado.');
+                }
+            } elseif ($nuevo_estado_subtarea !== 'completada' && $tarea_actual && $tarea_actual['estado'] === 'completada') {
+                // Si una subtarea se desmarcó (ya no está 'completada') y la tarea padre estaba 'completada',
+                // se podría cambiar el estado de la tarea padre a 'en_progreso' o 'definida'.
+                // Ajusta 'en_progreso' al estado que consideres apropiado.
+                $tareas_db->update($id_tarea, ['estado' => 'en_progreso']);
+                session()->setFlashdata('info', 'Estado de subtarea actualizado. Tarea principal actualizada a "en progreso".');
+            } else {
+                // No todas las subtareas están completadas o no hay subtareas
+                session()->setFlashdata('info', 'Estado de subtarea actualizado.');
+            }
+            
+            return redirect()->to(base_url('controlador_tareas/tareas'));
+        } else {
+            return redirect()->to(base_url('controlador_tareas/tareas'))->with('error', 'No se pudo actualizar el estado de la subtarea.');
+        }
     }
 
-
-   
-
-  
 }
-    ?>

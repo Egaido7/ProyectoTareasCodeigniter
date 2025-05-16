@@ -1,4 +1,4 @@
-<?php namespace App\Models;
+<?php namespace App\Models\db_tareas;
 use CodeIgniter\Model;
 use App\Models\db_tareas\Usuario_db; // Asegúrate de que la ruta sea correcta
 class Colaboradores_subtareas_db extends Model
@@ -24,7 +24,7 @@ public function All_subcolaboradores($id_subtarea)
 {
     return $this->select('colaboradores_subtareas.id_user, usuario.correo')
                 ->join('usuario', 'usuario.id_user = colaboradores_subtareas.id_user')
-                ->where('colaboradores_subtareas.id_tarea', $id_subtarea)
+                ->where('colaboradores_subtareas.id_subtarea', $id_subtarea)
                 ->where('colaboradores_subtareas.estado_colaborador', 'aceptada')
                 ->findAll();
 }

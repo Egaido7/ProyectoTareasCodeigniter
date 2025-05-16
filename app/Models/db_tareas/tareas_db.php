@@ -112,6 +112,12 @@ public function obtenerMisTareas($userId)
     return $this->where('asignado_a', $userId)->orderBy('fecha_vencimiento')->findAll();
 }
 
+public function obtenerTareaActual($userId)
+{
+    // Obtiene las tareas donde el usuario actual es responsable
+    return $this->where('id_responsable', $userId)->findAll();
+}
+
 public function obtenerTareasColaborador($userId)
 {
     // Obtiene las tareas donde el usuario actual es colaborador

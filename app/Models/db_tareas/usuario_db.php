@@ -21,6 +21,12 @@ public function All_usuarios()
     return $this->findAll();
 }
 
+public function Devolver_usuarioID($id)
+{
+    // Busca el usuario en la base de datos y devuelve el primer resultado
+    return $this->where('id_user', $id)->first();
+}
+
 public function Devolver_usuario($usuario)
 {
     // Busca el usuario en la base de datos y devuelve el primer resultado
