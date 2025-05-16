@@ -1,0 +1,177 @@
+/* Estilos generales (mantener los anteriores) */
+body {
+    background-color: #f8f9fa;
+        font-family: "Geist", sans-serif;
+        font-optical-sizing: auto;
+        font-weight: 13px;
+        font-style: normal;
+}
+
+/* --- ESTILOS VISTA PRINCIPAL (index.html) --- */
+
+/* Estilos para las tarjetas de tarea (mantener los anteriores) */
+.task-card {
+    border-left-width: 5px;
+    border-left-style: solid;
+    transition: box-shadow 0.2s ease-in-out;
+    margin-bottom: 1rem;
+    position: relative; /* Para el stretched link */
+}
+.task-card:hover {
+     box-shadow: 0 .5rem 1rem rgba(0,0,0,.1);
+}
+.task-priority-alta { border-left-color: var(--bs-danger); }
+.task-priority-normal { border-left-color: var(--bs-primary); }
+.task-priority-baja { border-left-color: var(--bs-secondary); }
+.task-status-completada { border-left-color: var(--bs-success); }
+.task-status-completada .card-body { opacity: 0.7; }
+
+.task-card .card-footer {
+    padding: 0;
+    border-top: none;
+    height: 6px;
+    background-color: var(--task-color, var(--bs-secondary));
+    opacity: 0.7;
+}
+
+#boton-negro{
+    background-color: hsl(339.92deg 5.9% 10%);
+    border-color: hsl(339.92deg 5.9% 10%);;
+}
+#boton-negro:hover{
+     background-color: hsl(330, 2%, 20%);
+}
+#boton-blanco{
+    background-color: hsl(0, 0%, 100%);
+    color: black;
+    border-color: hsl(0, 1%, 83%);;
+}
+#boton-blanco:hover{
+    background-color: hsl(336, 10%, 90%);
+}
+
+
+
+
+.col-md-2{
+    padding: 5px 12px;
+}
+/* Enlace que cubre la tarjeta (casi) */
+.stretched-link-task::after {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1; /* Asegura que esté sobre el contenido base pero debajo de los controles */
+    content: "";
+}
+/* Asegurar que los controles estén por encima del enlace */
+.task-options,
+.subtasks-toggle,
+.subtask-list .form-check-input {
+    z-index: 2;
+    position: relative;
+}
+
+/* Opciones de la tarea (tres puntos) */
+.task-options .btn-icon {
+    padding: 0.1rem 0.4rem;
+    color: var(--bs-secondary); 
+}
+.task-options .btn-icon:hover {
+    background-color: var(--bs-light);
+    color: var(--bs-dark);
+}
+
+/* Detalles de la tarea (iconos y texto) */
+.task-details i { width: 1.2em; }
+.task-details p { font-size: 0.9em; color: #6c757d; }
+
+/* Sección de Subtareas (index.html) */
+.subtasks-section .subtasks-toggle {
+    text-decoration: none;
+    color: var(--bs-body-color);
+    cursor: pointer;
+    font-size: 0.9em;
+    padding: 0.25rem 0;
+}
+.subtasks-section .subtasks-toggle:hover { color: var(--bs-primary); }
+.subtasks-section .subtasks-toggle i.bi-chevron-down,
+.subtasks-section .subtasks-toggle i.bi-chevron-up {
+    transition: transform 0.3s ease;
+}
+/* .subtasks-section .subtasks-toggle[aria-expanded="true"] i.bi-chevron-down { transform: rotate(180deg); } */ /* JS maneja esto */
+
+.subtask-list .list-group-item {
+    padding-left: 0 !important; /* Override Bootstrap */
+    padding-right: 0;
+    border: none;
+}
+
+/* Estilo para checkbox y label de subtarea */
+.subtask-checkbox {
+    cursor: pointer;
+}
+.subtask-label {
+    transition: all 0.2s ease-in-out;
+    cursor: pointer;
+    color: var(--bs-body-color); /* Color normal */
+}
+/* Estilo cuando el checkbox está marcado */
+.subtask-checkbox:checked + .subtask-label {
+    text-decoration: line-through;
+    color: var(--bs-secondary); /* Color más tenue */
+    opacity: 0.8;
+}
+
+
+/* --- ESTILOS FORMULARIOS (nueva-tarea, login, registro) --- */
+
+/* Centrar formularios de login y registro */
+.form-signin, .form-register {
+  max-width: 400px; /* Ancho máximo del formulario */
+  padding: 1rem;
+}
+@media (min-width: 768px) {
+    .form-signin, .form-register {
+        max-width: 450px;
+    }
+}
+
+.form-signin .form-floating:focus-within {
+  z-index: 2;
+}
+
+/* Estilos específicos si son necesarios para nueva-tarea.html */
+.subtasks-form-section {
+    background-color: var(--bs-light); /* Fondo ligeramente distinto */
+}
+
+/* Botón eliminar subtarea en formulario */
+.btn-remove-subtask {
+    padding: 0.1rem 0.4rem;
+    line-height: 1;
+    font-size: 0.8rem;
+}
+
+
+/* Iconos en dropdowns */
+.dropdown-item i { width: 1.5em; }
+
+/* Ajustes responsivos */
+@media (max-width: 767.98px) {
+    .filters-section .row > div { margin-bottom: 0.5rem; }
+    .filters-section .col-md-3:last-child { justify-content: flex-start !important; }
+}
+
+
+/* Asegurar que el dropdown de usuario no se comprima demasiado en pantallas pequeñas */
+.header .dropdown {
+    min-width: fit-content; /* Ajusta el ancho mínimo al contenido */
+}
+
+/* Estilo específico para notificaciones si es necesario */
+.notification-item {
+    transition: opacity 0.3s ease;
+}
