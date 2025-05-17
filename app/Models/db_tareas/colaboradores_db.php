@@ -69,4 +69,12 @@ public function Eliminar_colaborador($id_tarea, $correo)
     return false; // Usuario no encontrado
 }
 
+
+public function actualizarEstadoColaboradorPorUsuario($id_tarea, $id_usuario, $nuevo_estado)
+{
+    return $this->where('id_tarea', $id_tarea)
+                ->where('id_user', $id_usuario)
+                ->set(['estado_colaborador' => $nuevo_estado])
+                ->update();
+}
 }

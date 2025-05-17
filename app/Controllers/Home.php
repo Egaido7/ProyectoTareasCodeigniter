@@ -6,7 +6,12 @@ class Home extends BaseController
 {
     public function getIndex()
     {
-        return view('vistas_tareas/index');
+        if(session()->has('usuario')){
+            return redirect()->to(base_url('controlador_tareas/tareas'));
+        }else{
+             return redirect()->to(base_url('controlador_tareas/login'));
+        }
+
     }
     
 }

@@ -1,0 +1,8 @@
+#aqui le dejo la url http://localhost/projecto_ci4/public
+#la configuracion de la base de datos está como default asi que no se necesita privilegios, de igual forma está configurado en el archivo Database los datos de la base de datos
+#le dejos algunos users, de todas formas el login y registro anda a la perfeccion
+#user:emiliano.gaido07@gmail.com
+#contraseña:egaido
+
+#user:tomascapo09@gmail.com
+#contraseña:e45382003
