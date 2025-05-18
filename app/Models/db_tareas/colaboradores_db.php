@@ -39,7 +39,7 @@ public function existeColaborador($id_tarea, $correo)
                 ->countAllResults() > 0;
 }
 
-public function Insertar_colaborador($id_tarea, $correo) {
+public function Insertar_colaborador($id_tarea, $correo, $estado) {
     $usuario_db = new Usuario_db();
     $id_user = $usuario_db->Devolver_usuario($correo);
 
@@ -49,7 +49,7 @@ public function Insertar_colaborador($id_tarea, $correo) {
         $data = [
             'id_tarea' => $id_tarea,
             'id_user' => $id_user['id_user'],
-            'estado_colaborador' => 'pendiente'
+            'estado_colaborador' => $estado
         ];
         $result = $builder->insert($data);
         return $result ? true : false;

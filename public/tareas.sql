@@ -151,8 +151,8 @@ CREATE TABLE `usuario` (
 --
 
 INSERT INTO `usuario` (`nombre`, `apellido`, `correo`, `id_user`, `contrasenia`) VALUES
-('emiliano', 'gaido', 'emiliano.gaido07@gmail.com', 1, 'egaido'),
-('martina', 'olmo', 'martinaolmo80@gmail.com', 2, 'martina'),
+('emiliano', 'gaido', 'emiliano.gaido07@gmail.com', 1, 'egaido1111'),
+('martina', 'olmo', 'martinaolmo80@gmail.com', 2, 'martina2025'),
 ('Pablo Gabriel', 'Gaido Riso', 'pablogaidoriso@hotmail.com.ar', 3, 'pablo1976'),
 ('tomas', 'fonzi', 'tomascapo09@gmail.com', 4, 'e45382003');
 

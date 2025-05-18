@@ -30,7 +30,7 @@ if (session()->has('usuario')): // Usar helper de CI4
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
             </div>
         <?php endif; ?>
-        
+
         <?php /* Mensajes específicos para colaboradores de subtareas */ ?>
         <?php if (session()->getFlashdata('success_subcolab')): ?>
             <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -63,17 +63,19 @@ if (session()->has('usuario')): // Usar helper de CI4
                             <li>
                                 <a class="dropdown-item d-flex align-items-center" href="#" data-bs-toggle="modal" data-bs-target="#notificacionesModal">
                                     <i class="bi bi-bell-fill me-2"></i>Notificaciones
-                                      <?php 
-                                        // Contar notificaciones no leídas para un badge (opcional)
-                                        // Esto requeriría cargar este conteo en el controlador Tareas::getIndex
-                                        // $unread_count = 0; // $notificaciones_db->where('id_usuario_destino', $user_id_actual)->where('leida', 0)->countAllResults();
-                                        // if ($unread_count > 0) {
-                                        //     echo '<span class="badge bg-danger ms-auto">' . $unread_count . '</span>';
-                                        // }
+                                    <?php
+                                    // Contar notificaciones no leídas para un badge (opcional)
+                                    // Esto requeriría cargar este conteo en el controlador Tareas::getIndex
+                                    // $unread_count = 0; // $notificaciones_db->where('id_usuario_destino', $user_id_actual)->where('leida', 0)->countAllResults();
+                                    // if ($unread_count > 0) {
+                                    //     echo '<span class="badge bg-danger ms-auto">' . $unread_count . '</span>';
+                                    // }
                                     ?>
                                 </a>
                             </li>
-                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
                             <li>
                                 <a class="dropdown-item d-flex align-items-center" href="<?= base_url('controlador_tareas/login/logout') ?>">
                                     <i class="bi bi-box-arrow-right me-2"></i>Cerrar Sesión
@@ -154,7 +156,7 @@ if (session()->has('usuario')): // Usar helper de CI4
                                 <div class="card-body">
                                     <div class="d-flex justify-content-between align-items-start mb-2">
                                         <h5 class="card-title mb-0">
-                                             <a href="<?= base_url('controlador_tareas/tareas/editar_tarea/' . $tarea['id_tarea']) ?>" >
+                                            <a href="<?= base_url('controlador_tareas/tareas/editar_tarea/' . $tarea['id_tarea']) ?>">
                                                 <?= esc($tarea['asunto']) ?>
                                             </a>
                                         </h5>
@@ -171,14 +173,14 @@ if (session()->has('usuario')): // Usar helper de CI4
                                                             <i class="bi bi-pencil me-2"></i>Editar Tarea
                                                         </button>
                                                     </li>
-                                                </form> 
+                                                </form>
                                                 <li>
                                                     <a href="<?= base_url('controlador_tareas/tareas/compartir?id_tarea=' . $tarea['id_tarea']) ?>" class="dropdown-item">
                                                         <i class="bi bi-person-plus me-2"></i>Compartir Tarea
                                                     </a>
                                                 </li>
                                                 <?php if ($es_responsable_tarea): ?>
-                                                    
+
                                                     <form action="<?= base_url('controlador_tareas/tareas/accion_tarea') ?>" method="post" class="form-accion-tarea">
                                                         <?= csrf_field() ?>
                                                         <input type="hidden" name="id_tarea" value="<?= esc($tarea['id_tarea']) ?>">
@@ -188,7 +190,9 @@ if (session()->has('usuario')): // Usar helper de CI4
                                                             </button>
                                                         </li>
                                                         <?php if (($tarea['estado'] ?? 'definida') === 'completada'): ?>
-                                                            <li><hr class="dropdown-divider"></li>
+                                                            <li>
+                                                                <hr class="dropdown-divider">
+                                                            </li>
                                                             <li>
                                                                 <button type="submit" name="accion" value="archivar" class="dropdown-item" onclick="return confirm('¿Seguro que deseas archivar esta tarea?');">
                                                                     <i class="bi bi-archive me-2"></i>Archivar Tarea
@@ -201,10 +205,10 @@ if (session()->has('usuario')): // Usar helper de CI4
                                         </div>
                                     </div>
                                     <div class="mb-3">
-                                        <span class="badge bg-<?= ($tarea['prioridad'] ?? 'normal') === 'alta' ? 'danger' : (($tarea['prioridad'] ?? 'normal') === 'media' ? 'warning' : 'success') ?> me-2">
+                                        <span class="badge bg-<?= ($tarea['prioridad'] ?? 'normal') === 'alta' ? 'danger' : ((($tarea['prioridad'] ?? 'normal') === 'media' || ($tarea['prioridad'] ?? 'normal') === 'normal') ? 'warning' : 'success') ?> me-2">
                                             <?= esc(ucfirst($tarea['prioridad'] ?? 'normal')) ?>
                                         </span>
-                                        <span class="badge bg-<?= ($tarea['estado'] ?? 'definida') === 'completada' ? 'success' : (($tarea['estado'] ?? 'definida') === 'en_progreso' ? 'warning' : (($tarea['estado'] ?? 'definida') === 'definida' ? 'info' : 'secondary')) ?>"> 
+                                        <span class="badge bg-<?= ($tarea['estado'] ?? 'definida') === 'completada' ? 'success' : (($tarea['estado'] ?? 'definida') === 'en_progreso' ? 'warning' : (($tarea['estado'] ?? 'definida') === 'definida' ? 'info' : 'secondary')) ?>">
                                             <?= esc(str_replace('_', ' ', ucfirst($tarea['estado'] ?? 'definida'))) ?>
                                         </span>
                                     </div>
@@ -223,19 +227,26 @@ if (session()->has('usuario')): // Usar helper de CI4
                                             <div class="collapse mt-2" id="subtareas<?= esc($tarea['id_tarea']) ?>">
                                                 <div class="list-group list-group-flush subtask-list">
                                                     <?php foreach ($tarea['subtareas'] as $subtarea): ?>
-                                                        <?php 
-                                                            $es_responsable_subtarea = (isset($subtarea['id_responsable']) && $subtarea['id_responsable'] == $user_id_actual);
-                                                            $puede_eliminar_subtarea = $es_responsable_tarea || $es_responsable_subtarea; // Responsable de tarea padre O responsable de subtarea
+                                                        <?php
+                                                        $es_responsable_subtarea = (isset($subtarea['id_responsable']) && $subtarea['id_responsable'] == $user_id_actual);
+                                                        $puede_eliminar_subtarea = $es_responsable_tarea || $es_responsable_subtarea; // Responsable de tarea padre O responsable de subtarea
+                                                        $subtarea_estado_actual = $subtarea['estado'] ?? 'pendiente';
+                                                        $subtarea_completada = ($subtarea_estado_actual === 'completada');
+                                                        $id_checkbox_subtarea = 'sub-' . esc($subtarea['id_subtarea']) . '-tarea-' . esc($tarea['id_tarea']);
                                                         ?>
                                                         <div class="list-group-item d-flex justify-content-between align-items-center ps-0 border-0 py-1">
                                                             <div class="form-check flex-grow-1">
-                                                                <input class="form-check-input subtask-checkbox" type="checkbox" value="" id="sub<?= esc($subtarea['id_subtarea']) ?>-<?= esc($tarea['id_tarea']) ?>" <?= ($subtarea['estado'] ?? 'pendiente') === 'completada' ? 'checked' : '' ?> onchange="window.location.href='<?= site_url('controlador_tareas/subtareas/tachar_subtarea/' . esc($subtarea['id_subtarea']) . '/' . esc($tarea['id_tarea']) . '/' . (($subtarea['estado'] ?? 'pendiente') === 'completada' ? 'pendiente' : 'completada')) ?>'">
-                                                                <label class="form-check-label subtask-label <?= ($subtarea['estado'] ?? 'pendiente') === 'completada' ? 'text-decoration-line-through text-muted' : '' ?>" for="sub<?= esc($subtarea['id_subtarea']) ?>-<?= esc($tarea['id_tarea']) ?>">
+                                                                <input class="form-check-input subtask-checkbox" type="checkbox"
+                                                                    value=""
+                                                                    id="<?= $id_checkbox_subtarea ?>"
+                                                                    <?= $subtarea_completada ? 'checked' : '' ?>
+                                                                    onchange="window.location.href='<?= site_url('controlador_tareas/subtareas/tachar_subtarea/' . esc($subtarea['id_subtarea']) . '/' . esc($tarea['id_tarea'])) ?>/' + (this.checked ? 'completada' : 'en_progreso')">
+                                                                <label class="form-check-label subtask-label <?= $subtarea_completada ? 'text-decoration-line-through text-muted' : '' ?>" for="<?= $id_checkbox_subtarea ?>">
                                                                     <?= esc($subtarea['nombre']) ?>
-                                                                    <?php if(!empty($subtarea['fecha_vencimiento'])): ?>
+                                                                    <?php if (!empty($subtarea['fecha_vencimiento'])): ?>
                                                                         <small class="text-muted">(Vence: <?= esc(date('d/m/Y', strtotime($subtarea['fecha_vencimiento']))) ?>)</small>
                                                                     <?php endif; ?>
-                                                                     <span class="badge bg-<?= ($subtarea['prioridad'] ?? 'normal') === 'alta' ? 'danger' : (($subtarea['prioridad'] ?? 'normal') === 'media' ? 'warning' : 'success') ?> ms-1">
+                                                                    <span class="badge bg-<?= ($subtarea['prioridad'] ?? 'normal') === 'alta' ? 'danger' : ((($subtarea['prioridad'] ?? 'normal') === 'media' || ($subtarea['prioridad'] ?? 'normal') === 'normal') ? 'warning' : 'success') ?> ms-1">
                                                                         <small><?= esc(ucfirst($subtarea['prioridad'] ?? 'normal')) ?></small>
                                                                     </span>
                                                                 </label>
@@ -251,7 +262,9 @@ if (session()->has('usuario')): // Usar helper de CI4
                                                                         </a>
                                                                     </li>
                                                                     <?php if ($puede_eliminar_subtarea): ?>
-                                                                        <li><hr class="dropdown-divider"></li>
+                                                                        <li>
+                                                                            <hr class="dropdown-divider">
+                                                                        </li>
                                                                         <li>
                                                                             <form action="<?= site_url('controlador_tareas/subtareas/eliminar_subtarea') ?>" method="post" class="form-accion-subtarea d-inline">
                                                                                 <?= csrf_field() ?>
@@ -274,7 +287,7 @@ if (session()->has('usuario')): // Usar helper de CI4
                                         <div class="subtasks-section"><span class="text-muted small"><i class="bi bi-list-task me-1"></i> Sin subtareas</span></div>
                                     <?php endif; ?>
                                 </div>
-                                 <div class="card-footer text-muted" style="--task-color: <?= esc($tarea['color'] ?? '#6c757d', 'attr') ?>;"></div>
+                                <div class="card-footer text-muted" style="--task-color: <?= esc($tarea['color'] ?? '#6c757d', 'attr') ?>;"></div>
                             </div>
                         </div>
                     <?php endforeach; ?>
@@ -288,22 +301,35 @@ if (session()->has('usuario')): // Usar helper de CI4
             <h2 class="h4 mb-3">Subtareas Compartidas Conmigo</h2>
             <section class="task-list row g-4">
                 <?php if (!empty($subtareas_compartidas) && is_array($subtareas_compartidas)): ?>
-                    <?php foreach ($subtareas_compartidas as $subcompartida): ?>
+                    <?php foreach ($subtareas_compartidas as $subcompartida):  ?>
                         <?php
-                            // Lógica de permisos para eliminar subtarea compartida:
-                            // Solo el responsable de la tarea padre de esta subtarea, o el responsable de la propia subtarea.
-                            $es_responsable_tarea_padre_de_sub = (isset($subcompartida['id_responsable_tarea_padre']) && $subcompartida['id_responsable_tarea_padre'] == $user_id_actual);
-                            $es_responsable_de_esta_sub = (isset($subcompartida['id_responsable_subtarea']) && $subcompartida['id_responsable_subtarea'] == $user_id_actual);
-                            $puede_eliminar_esta_sub_compartida = $es_responsable_tarea_padre_de_sub || $es_responsable_de_esta_sub;
+
+                        $subcompartida_estado_actual = $subcompartida['subtarea_estado'] ?? 'definida';
+                        $subcompartida_completada = ($subcompartida_estado_actual === 'completada');
+                        $id_checkbox_sub_comp = 'subcomp-' . esc($subcompartida['id_subtarea']) . '-tareapadre-' . esc($subcompartida['tarea_padre_id']);
+
+                        // Lógica de permisos para eliminar subtarea compartida:
+                        // Solo el responsable de la tarea padre de esta subtarea, o el responsable de la propia subtarea.
+                        //$es_responsable_tarea_padre_de_sub = (isset($subcompartida['id_responsable_tarea_padre']) && $subcompartida['id_responsable_tarea_padre'] == $user_id_actual);
+                        //$es_responsable_de_esta_sub = (isset($subcompartida['id_responsable_subtarea']) && $subcompartida['id_responsable_subtarea'] == $user_id_actual);
+                        //$puede_eliminar_esta_sub_compartida = $es_responsable_tarea_padre_de_sub || $es_responsable_de_esta_sub;
                         ?>
                         <div class="col-md-6 col-lg-4">
                             <div class="card task-card task-card-shared" style="border-left-color: <?= esc($subcompartida['tarea_padre_color'] ?? '#6c757d', 'attr') ?>;">
                                 <div class="card-body">
                                     <div class="d-flex justify-content-between align-items-start mb-2">
-                                        <div>
-                                            <h5 class="card-title mb-0"><?= esc($subcompartida['subtarea_nombre']) ?></h5>
-                                            <small class="text-muted">De Tarea: <?= esc($subcompartida['tarea_padre_asunto'] ?? 'N/A') ?></small>
+                                        <div class="form-check flex-grow-1">
+                                            <input class="form-check-input subtask-checkbox" type="checkbox"
+                                                value=""
+                                                id="<?= $id_checkbox_sub_comp ?>"
+                                                <?= $subcompartida_completada ? 'checked' : '' ?>
+                                                onchange="window.location.href='<?= site_url('controlador_tareas/subtareas/tachar_subtarea/' . esc($subcompartida['id_subtarea']) . '/' . esc($subcompartida['tarea_padre_id'])) ?>/' + (this.checked ? 'completada' : 'en_progreso')">
+                                            <label class="form-check-label <?= $subcompartida_completada ? 'text-decoration-line-through text-muted' : '' ?>" for="<?= $id_checkbox_sub_comp ?>">
+                                                <h5 class="card-title mb-0 d-inline"><?= esc($subcompartida['subtarea_nombre']) ?></h5>
+                                            </label>
+                                            <br><small class="text-muted">De Tarea: <?= esc($subcompartida['tarea_padre_asunto'] ?? 'N/A') ?></small>
                                         </div>
+                                        <?php /*OPCION PARA DARSE DE BAJA O VER COLABORADORES
                                         <div class="dropdown subtask-options ms-2">
                                             <button class="btn btn-sm btn-icon" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Opciones de subtarea compartida">
                                                 <i class="bi bi-three-dots-vertical"></i>
@@ -314,6 +340,7 @@ if (session()->has('usuario')): // Usar helper de CI4
                                                         <i class="bi bi-people me-2"></i>Ver/Administrar Colaboradores
                                                     </a>
                                                 </li>
+                                                <?php //NO IMPLEMENTE POR QUE NO LO PIDE EL ENUNCIADO ?>
                                                 <?php if ($puede_eliminar_esta_sub_compartida): ?>
                                                 <li><hr class="dropdown-divider"></li>
                                                 <li>
@@ -327,19 +354,24 @@ if (session()->has('usuario')): // Usar helper de CI4
                                                     </form>
                                                 </li>
                                                 <?php endif; ?>
-                                                {/* Aquí podrías añadir un botón "Dejar de colaborar" si implementas esa funcionalidad */}
+                                                
                                             </ul>
                                         </div>
+                                        */
+                                        ?>
+
                                     </div>
-                                     <div class="mb-3">
-                                        <span class="badge bg-<?= ($subcompartida['subtarea_prioridad'] ?? 'normal') === 'alta' ? 'danger' : (($subcompartida['subtarea_prioridad'] ?? 'normal') === 'media' ? 'warning' : 'success') ?> me-2">
+                                    <div class="mb-3">
+                                        <span class="badge bg-<?= ($subcompartida['subtarea_prioridad'] ?? 'normal') === 'alta' ? 'danger' : ((($subcompartida['subtarea_prioridad'] ?? 'normal') === 'media' || ($subcompartida['subtarea_prioridad'] ?? 'normal') === 'normal') ? 'warning' : 'success') ?> me-2">
                                             <small><?= esc(ucfirst($subcompartida['subtarea_prioridad'] ?? 'normal')) ?></small>
                                         </span>
+
+
                                         <span class="badge bg-<?= ($subcompartida['subtarea_estado'] ?? 'definida') === 'completada' ? 'success' : (($subcompartida['subtarea_estado'] ?? 'definida') === 'en_progreso' ? 'warning' : 'info') ?>">
-                                            <small><?= esc(str_replace('_', ' ', ucfirst($subcompartida['subtarea_estado'] ?? 'definida')))?></small>
+                                            <small><?= esc(str_replace('_', ' ', ucfirst($subcompartida['subtarea_estado'] ?? 'definida'))) ?></small>
                                         </span>
                                     </div>
-                                    <?php if(!empty($subcompartida['subtarea_vencimiento'])): ?>
+                                    <?php if (!empty($subcompartida['subtarea_vencimiento'])): ?>
                                         <p class="mb-1 task-details"><i class="bi bi-calendar-check me-2 text-danger"></i> Vence: <?= esc(date('d M Y', strtotime($subcompartida['subtarea_vencimiento']))) ?></p>
                                     <?php endif; ?>
                                 </div>
@@ -375,8 +407,8 @@ if (session()->has('usuario')): // Usar helper de CI4
                             <hr>
                             <h6>Lista de Colaboradores de Tarea</h6>
                             <ul class="list-group">
-                                <?php if (!empty($colaboradores) && is_array($colaboradores)): ?>
-                                    <?php foreach ($colaboradores as $colaborador): ?>
+                                <?php if (!empty($colaboradores_modal) && is_array($colaboradores_modal)): ?>
+                                    <?php foreach ($colaboradores_modal as $colaborador): ?>
                                         <li class="list-group-item d-flex justify-content-between align-items-center">
                                             <?= esc($colaborador['correo']) ?>
                                             <form action="<?= site_url('controlador_tareas/tareas/eliminar_colaborador') ?>" method="post" style="display:inline;">
@@ -401,7 +433,7 @@ if (session()->has('usuario')): // Usar helper de CI4
 
         <?php if (!empty($abrir_modal_subtarea) && !empty($id_subtarea_modal)): ?>
             <div class="modal fade" id="compartirSubtareaModal" tabindex="-1" aria-labelledby="compartirSubtareaModalLabel" aria-hidden="true">
-                 <div class="modal-dialog">
+                <div class="modal-dialog">
                     <div class="modal-content">
                         <div class="modal-header">
                             <h5 class="modal-title" id="compartirSubtareaModalLabel">Colaboradores de Subtarea: <?= esc($nombre_subtarea_modal ?? 'Subtarea') ?></h5>
@@ -445,8 +477,8 @@ if (session()->has('usuario')): // Usar helper de CI4
                 </div>
             </div>
         <?php endif; ?>
-        
-         <div class="modal fade" id="notificacionesModal" tabindex="-1" aria-labelledby="notificacionesModalLabel" aria-hidden="true">
+
+        <div class="modal fade" id="notificacionesModal" tabindex="-1" aria-labelledby="notificacionesModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-lg modal-dialog-scrollable">
                 <div class="modal-content">
                     <div class="modal-header">
@@ -461,17 +493,17 @@ if (session()->has('usuario')): // Usar helper de CI4
                                         <div class="d-flex w-100 justify-content-between">
                                             <div>
                                                 <h6 class="mb-1">
-                                                    <?php 
-                                                        $icon = 'bi-info-circle-fill text-info'; // Default
-                                                        if ($notif['tipo_notificacion'] === 'invitacion_tarea' || $notif['tipo_notificacion'] === 'invitacion_subtarea') {
-                                                            $icon = 'bi-person-plus-fill text-primary';
-                                                        } elseif ($notif['tipo_notificacion'] === 'recordatorio_vencimiento') {
-                                                            $icon = 'bi-exclamation-triangle-fill text-danger';
-                                                        } elseif (str_contains($notif['tipo_notificacion'], '_aceptada')) {
-                                                            $icon = 'bi-check-circle-fill text-success';
-                                                        } elseif (str_contains($notif['tipo_notificacion'], '_rechazada')) {
-                                                            $icon = 'bi-x-circle-fill text-danger';
-                                                        }
+                                                    <?php
+                                                    $icon = 'bi-info-circle-fill text-info'; // Default
+                                                    if ($notif['tipo_notificacion'] === 'invitacion_tarea' || $notif['tipo_notificacion'] === 'invitacion_subtarea') {
+                                                        $icon = 'bi-person-plus-fill text-primary';
+                                                    } elseif ($notif['tipo_notificacion'] === 'recordatorio_vencimiento') {
+                                                        $icon = 'bi-exclamation-triangle-fill text-danger';
+                                                    } elseif (str_contains($notif['tipo_notificacion'], '_aceptada')) {
+                                                        $icon = 'bi-check-circle-fill text-success';
+                                                    } elseif (str_contains($notif['tipo_notificacion'], '_rechazada')) {
+                                                        $icon = 'bi-x-circle-fill text-danger';
+                                                    }
                                                     ?>
                                                     <i class="bi <?= $icon ?> me-2"></i>
                                                     <?= esc(ucfirst(str_replace('_', ' ', $notif['tipo_notificacion']))) ?>
@@ -480,12 +512,12 @@ if (session()->has('usuario')): // Usar helper de CI4
                                             </div>
                                             <div class="text-end">
                                                 <small class="text-muted"><?= esc(date('d/m/Y H:i', strtotime($notif['fecha_creacion']))) ?></small>
-                                                <button type="button" class="btn-close btn-sm ms-2 descartar-notificacion-btn" 
-                                                        data-id-notificacion="<?= esc($notif['id_notificacion']) ?>" 
-                                                        aria-label="Descartar" title="Descartar notificación"></button>
+                                                <button type="button" class="btn-close btn-sm ms-2 descartar-notificacion-btn"
+                                                    data-id-notificacion="<?= esc($notif['id_notificacion']) ?>"
+                                                    aria-label="Descartar" title="Descartar notificación"></button>
                                             </div>
                                         </div>
-                                        
+
                                         <?php if (($notif['tipo_notificacion'] === 'invitacion_tarea' || $notif['tipo_notificacion'] === 'invitacion_subtarea') && !$notif['leida']): ?>
                                             <div class="mt-2">
                                                 <a href="<?= site_url('controlador_tareas/notificacionescontroller/responderinvitacion/' . esc($notif['id_notificacion']) . '/aceptar') ?>" class="btn btn-sm btn-success me-2">
@@ -496,7 +528,7 @@ if (session()->has('usuario')): // Usar helper de CI4
                                                 </a>
                                             </div>
                                         <?php endif; ?>
-                                        
+
                                         <?php if ($notif['tipo_notificacion'] === 'recordatorio_vencimiento' && isset($notif['id_entidad_principal'])): ?>
                                             <a href="<?= site_url('controlador_tareas/tareas/editar_tarea/' . esc($notif['id_entidad_principal'])) ?>" class="btn btn-sm btn-outline-primary mt-1">Ver Tarea</a>
                                         <?php endif; ?>
@@ -541,26 +573,26 @@ if (session()->has('usuario')): // Usar helper de CI4
                     if (btnMarcarTodas) {
                         btnMarcarTodas.addEventListener('click', function() {
                             fetch('<?= site_url('controlador_tareas/notificacionescontroller/marcarTodasLeidas') ?>', {
-                                method: 'POST',
-                                headers: {
-                                    'X-Requested-With': 'XMLHttpRequest',
-                                    '<?= csrf_header() ?>': '<?= csrf_hash() ?>' // Para protección CSRF
-                                }
-                            })
-                            .then(response => response.json())
-                            .then(data => {
-                                if (data.status === 'success') {
-                                    document.querySelectorAll('#notificacionesModal .notification-item:not(.opacity-75)').forEach(item => {
-                                        item.classList.add('opacity-75');
-                                        // Opcional: quitar botones de acción de invitaciones
-                                        item.querySelectorAll('.btn-success, .btn-outline-danger').forEach(btn => btn.remove());
-                                    });
-                                    // alert(data.message); // O un feedback más sutil
-                                } else {
-                                    // alert(data.message || 'Error al marcar como leídas.');
-                                }
-                            })
-                            .catch(error => console.error('Error:', error));
+                                    method: 'POST',
+                                    headers: {
+                                        'X-Requested-With': 'XMLHttpRequest',
+                                        '<?= csrf_header() ?>': '<?= csrf_hash() ?>' // Para protección CSRF
+                                    }
+                                })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.status === 'success') {
+                                        document.querySelectorAll('#notificacionesModal .notification-item:not(.opacity-75)').forEach(item => {
+                                            item.classList.add('opacity-75');
+                                            // Opcional: quitar botones de acción de invitaciones
+                                            item.querySelectorAll('.btn-success, .btn-outline-danger').forEach(btn => btn.remove());
+                                        });
+                                        // alert(data.message); // O un feedback más sutil
+                                    } else {
+                                        // alert(data.message || 'Error al marcar como leídas.');
+                                    }
+                                })
+                                .catch(error => console.error('Error:', error));
                         });
                     }
 
@@ -573,27 +605,28 @@ if (session()->has('usuario')): // Usar helper de CI4
                             if (!notifId || !confirm('¿Seguro que deseas descartar esta notificación?')) return;
 
                             fetch(`<?= site_url('controlador_tareas/notificacionescontroller/descartar/') ?>${notifId}`, {
-                                method: 'POST', // O GET si tu ruta lo permite y es seguro
-                                headers: {
-                                    'X-Requested-With': 'XMLHttpRequest',
-                                    '<?= csrf_header() ?>': '<?= csrf_hash() ?>'
-                                }
-                            })
-                            .then(response => response.json())
-                            .then(data => {
-                                if (data.status === 'success') {
-                                    document.getElementById(`notificacion-${notifId}`)?.remove();
-                                } else {
-                                    // alert(data.message || 'Error al descartar.');
-                                }
-                            })
-                            .catch(error => console.error('Error:', error));
+                                    method: 'POST', // O GET si tu ruta lo permite y es seguro
+                                    headers: {
+                                        'X-Requested-With': 'XMLHttpRequest',
+                                        '<?= csrf_header() ?>': '<?= csrf_hash() ?>'
+                                    }
+                                })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.status === 'success') {
+                                        document.getElementById(`notificacion-${notifId}`)?.remove();
+                                    } else {
+                                        // alert(data.message || 'Error al descartar.');
+                                    }
+                                })
+                                .catch(error => console.error('Error:', error));
                         }
                     });
                 }
             });
         </script>
     </body>
+
     </html>
 <?php
 else:
