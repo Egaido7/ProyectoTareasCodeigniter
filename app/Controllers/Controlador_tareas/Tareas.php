@@ -42,6 +42,8 @@ class Tareas extends BaseController
         }
 
         $subtareas_compartidas = $colaboradores_subtareas_db->getSubtareasCompartidasConUsuario($user_id);
+        
+       
         $notificaciones_usuario = $notificaciones_db->getAllNotificacionesUsuario($user_id, 30); 
 
         // Generar notificaciones de recordatorio de vencimiento
