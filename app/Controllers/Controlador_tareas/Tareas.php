@@ -410,6 +410,8 @@ class Tareas extends BaseController
         $tarea_actual = $tareas_db->find($id_tarea_a_compartir);
         $usuario_db = new Usuario_db(); 
         $notificaciones_db = new Notificaciones_db();
+        $subtareas_db = new Subtareas_db(); // Para obtener las subtareas
+        $colaboradores_subtareas_db = new Colaboradores_subtareas_db(); // Para agregar a subtareas
 
         if (!$tarea_actual) {
             return redirect()->to(base_url('controlador_tareas/tareas/compartir?id_tarea=' . $id_tarea_a_compartir))
@@ -449,14 +451,18 @@ class Tareas extends BaseController
                              ->with('info', 'Ya existe una invitación pendiente para este usuario en esta tarea.');
         }
 
-        // Asumiendo que Insertar_colaborador acepta un tercer parámetro para el estado
-        if ($colaboradores_db->Insertar_colaborador($id_tarea_a_compartir, $correo_invitado, 'pendiente')) { 
-            
-            $mensaje_notif = esc($nombre_usuario_actual) . " te ha invitado a colaborar en la tarea: \"" . esc($tarea_actual['asunto']) . "\".";
+        // Iniciar transacción si vas a hacer múltiples inserciones
+        $db = \Config\Database::connect();
+        $db->transStart();
+
+        $colaborador_agregado_a_tarea = $colaboradores_db->Insertar_colaborador($id_tarea_a_compartir, $correo_invitado, 'pendiente');
+
+        if ($colaborador_agregado_a_tarea) { 
+            $mensaje_notif_tarea = esc($nombre_usuario_actual) . " te ha invitado a colaborar en la tarea: \"" . esc($tarea_actual['asunto']) . "\".";
             $notificaciones_db->crearNotificacion([
                 'id_usuario_destino' => $id_usuario_invitado,
                 'tipo_notificacion' => 'invitacion_tarea',
-                'mensaje' => $mensaje_notif,
+                'mensaje' => $mensaje_notif_tarea,
                 'id_entidad_principal' => $id_tarea_a_compartir,
                 'tipo_entidad_principal' => 'tarea',
                 'id_entidad_relacionada' => $id_usuario_actual, 
@@ -464,13 +470,141 @@ class Tareas extends BaseController
                 'datos_adicionales' => json_encode(['nombre_tarea' => $tarea_actual['asunto'], 'nombre_invitador' => $nombre_usuario_actual])
             ]);
 
+            // NUEVA LÓGICA: Agregar como colaborador a todas las subtareas existentes de esta tarea
+            $subtareas_de_la_tarea = $subtareas_db->All_subtareas($id_tarea_a_compartir);
+
+            if (!empty($subtareas_de_la_tarea) && is_array($subtareas_de_la_tarea)) {
+                foreach ($subtareas_de_la_tarea as $subtarea) {
+                    if (isset($subtarea['id_subtarea'])) {
+                        $id_subtarea_actual = $subtarea['id_subtarea'];
+
+                        // Verificar si ya es colaborador o tiene invitación pendiente para ESTA subtarea
+                        if (!$colaboradores_subtareas_db->existeColaborador_subtarea($id_subtarea_actual, $correo_invitado) &&
+                            !$notificaciones_db->existeInvitacionPendiente($id_usuario_invitado, 'invitacion_subtarea', $id_subtarea_actual)) {
+                            
+                            if ($colaboradores_subtareas_db->Insertar_subcolaborador($id_subtarea_actual, $correo_invitado, 'pendiente')) {
+                                $mensaje_notif_sub = esc($nombre_usuario_actual) . " también te ha invitado a la subtarea: \"" . esc($subtarea['nombre']) . "\" (de la tarea \"" . esc($tarea_actual['asunto']) . "\").";
+                                $notificaciones_db->crearNotificacion([
+                                    'id_usuario_destino' => $id_usuario_invitado,
+                                    'tipo_notificacion' => 'invitacion_subtarea',
+                                    'mensaje' => $mensaje_notif_sub,
+                                    'id_entidad_principal' => $id_subtarea_actual,
+                                    'tipo_entidad_principal' => 'subtarea',
+                                    'id_entidad_relacionada' => $id_usuario_actual,
+                                    'tipo_entidad_relacionada' => 'usuario',
+                                    'datos_adicionales' => json_encode([
+                                        'nombre_subtarea' => $subtarea['nombre'], 
+                                        'nombre_tarea_padre' => $tarea_actual['asunto'],
+                                        'id_tarea_padre' => $id_tarea_a_compartir,
+                                        'nombre_invitador' => $nombre_usuario_actual
+                                    ])
+                                ]);
+                            } else {
+                                log_message('error', "No se pudo agregar colaborador a la subtarea ID: {$id_subtarea_actual} para el correo: {$correo_invitado}");
+                            }
+                        }
+                    }
+                }
+            }
+            
+            $db->transComplete(); // Completar la transacción
+            if ($db->transStatus() === false) {
+                // Si la transacción falló, manejar el error
+                log_message('error', "Falló la transacción al agregar colaborador a tarea y subtareas. Tarea ID: {$id_tarea_a_compartir}, Correo: {$correo_invitado}");
+                return redirect()->to(base_url('controlador_tareas/tareas/compartir?id_tarea=' . $id_tarea_a_compartir))
+                                 ->with('error', 'Ocurrió un error al procesar las invitaciones.');
+            }
+
             return redirect()->to(base_url('controlador_tareas/tareas/compartir?id_tarea=' . $id_tarea_a_compartir))
-                             ->with('success', 'Invitación enviada al colaborador.');
+                             ->with('success', 'Invitación enviada al colaborador para la tarea y sus subtareas existentes.');
         } else {
+            $db->transRollback(); // Revertir si la inserción inicial falló
             return redirect()->to(base_url('controlador_tareas/tareas/compartir?id_tarea=' . $id_tarea_a_compartir))
-                             ->with('error', 'No se pudo agregar el colaborador.');
+                             ->with('error', 'No se pudo agregar el colaborador a la tarea principal.');
         }
     }
+
+   public function postAgregar_colaborador_editar()
+{
+    $id_tarea_a_compartir = $this->request->getPost('id_tarea'); 
+    $correo_invitado = $this->request->getPost('correo');
+    $id_usuario_actual = session()->get('user_id');
+    $nombre_usuario_actual = session()->get('usuario'); 
+
+    $tareas_db = new \App\Models\db_tareas\Tareas_db();
+    $tarea_actual = $tareas_db->find($id_tarea_a_compartir); 
+    $usuario_db = new \App\Models\db_tareas\Usuario_db(); 
+    $notificaciones_db = new \App\Models\db_tareas\Notificaciones_db();
+
+    if (!$tarea_actual) {
+        // CORREGIDO: Usar segmento en la URL
+        return redirect()->to(base_url('controlador_tareas/tareas/editar_tarea/' . $id_tarea_a_compartir))
+                         ->with('error', 'Tarea no encontrada.');
+    }
+    if ($tarea_actual['id_responsable'] != $id_usuario_actual) {
+        // CORREGIDO: Usar segmento en la URL
+        return redirect()->to(base_url('controlador_tareas/tareas/editar_tarea/' . $id_tarea_a_compartir))
+                         ->with('error', 'No tienes permiso para agregar colaboradores a esta tarea.');
+    }
+    
+    if (empty($correo_invitado) || !filter_var($correo_invitado, FILTER_VALIDATE_EMAIL)) {
+        // CORREGIDO: Usar segmento en la URL
+        return redirect()->to(base_url('controlador_tareas/tareas/editar_tarea/' . $id_tarea_a_compartir))
+                         ->with('error', 'Correo inválido.')
+                         ->withInput(); // Mantener withInput si es necesario para repoblar el formulario
+    }
+
+    $info_invitado = $usuario_db->Devolver_usuario($correo_invitado);
+    if (!$info_invitado || !isset($info_invitado['id_user'])) {
+        // CORREGIDO: Usar segmento en la URL
+        return redirect()->to(base_url('controlador_tareas/tareas/editar_tarea/' . $id_tarea_a_compartir))
+                         ->with('error', 'El usuario invitado no existe en la base de datos.');
+    }
+    $id_usuario_invitado = $info_invitado['id_user'];
+
+    if ($id_usuario_invitado == $id_usuario_actual) {
+        // CORREGIDO: Usar segmento en la URL
+        return redirect()->to(base_url('controlador_tareas/tareas/editar_tarea/' . $id_tarea_a_compartir))
+                         ->with('error', 'No puedes invitarte a ti mismo.');
+    }
+
+    $colaboradores_db = new \App\Models\db_tareas\Colaboradores_db();
+    if ($colaboradores_db->existeColaborador($id_tarea_a_compartir, $correo_invitado)) {
+        // CORREGIDO: Usar segmento en la URL
+        return redirect()->to(base_url('controlador_tareas/tareas/editar_tarea/' . $id_tarea_a_compartir))
+                         ->with('error', 'El usuario ya es colaborador de esta tarea.');
+    }
+    
+    if ($notificaciones_db->existeInvitacionPendiente($id_usuario_invitado, 'invitacion_tarea', $id_tarea_a_compartir)) {
+        // CORREGIDO: Usar segmento en la URL
+        return redirect()->to(base_url('controlador_tareas/tareas/editar_tarea/' . $id_tarea_a_compartir))
+                         ->with('info', 'Ya existe una invitación pendiente para este usuario en esta tarea.');
+    }
+
+    if ($colaboradores_db->Insertar_colaborador($id_tarea_a_compartir, $correo_invitado, 'pendiente')) { 
+        
+        $mensaje_notif = esc($nombre_usuario_actual) . " te ha invitado a colaborar en la tarea: \"" . esc($tarea_actual['asunto']) . "\".";
+        $notificaciones_db->crearNotificacion([
+            'id_usuario_destino' => $id_usuario_invitado,
+            'tipo_notificacion' => 'invitacion_tarea',
+            'mensaje' => $mensaje_notif,
+            'id_entidad_principal' => $id_tarea_a_compartir,
+            'tipo_entidad_principal' => 'tarea',
+            'id_entidad_relacionada' => $id_usuario_actual, 
+            'tipo_entidad_relacionada' => 'usuario',
+            'datos_adicionales' => json_encode(['nombre_tarea' => $tarea_actual['asunto'], 'nombre_invitador' => $nombre_usuario_actual])
+        ]);
+
+        // CORREGIDO: Usar segmento en la URL
+        return redirect()->to(base_url('controlador_tareas/tareas/editar_tarea/' . $id_tarea_a_compartir))
+                         ->with('success', 'Invitación enviada al colaborador.');
+    } else {
+        // CORREGIDO: Usar segmento en la URL
+        return redirect()->to(base_url('controlador_tareas/tareas/editar_tarea/' . $id_tarea_a_compartir))
+                         ->with('error', 'No se pudo agregar el colaborador.');
+    }
+}
+
 
     public function postEliminar_colaborador()
     {
@@ -505,105 +639,54 @@ class Tareas extends BaseController
     
     public function getNueva_tarea()
     {
-        // Podrías querer pasar algunos datos aquí también si tu vista 'nueva_tarea' los necesita
-        // por ejemplo, para selects, o incluso $notificaciones_usuario si el layout las muestra siempre.
-        return view('vistas_tareas/nueva_tarea');
+        
+        $data = [
+            'validation' => session()->getFlashdata('validation')
+        ];
+        return view('vistas_tareas/nueva_tarea', $data);
     }
 
-    public function postGuardar_tarea()
+    public function postCrear_tareaprincipal()
     {
         $validation = \Config\Services::validation();
+        // Reglas de validación solo para los campos de la tarea principal
         $rules = [
-            'asunto' => 'required|min_length[4]',
-            'descripcion' => 'required|min_length[4]|max_length[255]',
-            'fecha_vencimiento' => 'required|valid_date',
+            'asunto'             => 'required|min_length[4]',
+            'descripcion'        => 'required|min_length[4]|max_length[255]',
+            'fecha_vencimiento'  => 'required|valid_date',
             'fecha_recordatorio' => 'required|valid_date',
-            // 'colaboradores' => 'permit_empty|valid_emails', // Si es una lista de correos
-            // 'subtarea_nombre.*' => 'permit_empty|min_length[4]', 
+            // 'estado' y 'prioridad' usualmente tienen valores por defecto y no necesitan 'required' si el select lo maneja
+            // 'color' también tiene un valor por defecto
         ];
-        // $messages = [ /* tus mensajes */ ];
 
-        if (!$this->validate($rules /*, $messages */)) {
-            // Es mejor redirigir con withInput y with('validation') para que la vista nueva_tarea pueda mostrar errores
+        if (!$this->validate($rules)) {
             return redirect()->to(base_url('controlador_tareas/tareas/nueva_tarea'))
                              ->withInput()
                              ->with('validation', $this->validator);
         }
 
         $data_tarea = [
-            'asunto' => $this->request->getPost('asunto') ?? '',
-            'descripcion' => $this->request->getPost('descripcion') ?? '',
-            'prioridad' => $this->request->getPost('prioridad') ?? 'normal',
-            'estado' => $this->request->getPost('estado') ?? 'definida',
-            'fecha_vencimiento' => $this->request->getPost('fecha_vencimiento') ?? null,
-            'fecha_recordatorio' => $this->request->getPost('fecha_recordatorio') ?? null,
-            'color' => $this->request->getPost('color') ?? '#ffffff',
-            'id_responsable' => session()->get('user_id'), 
+            'asunto'            => $this->request->getPost('asunto'),
+            'descripcion'       => $this->request->getPost('descripcion'),
+            'prioridad'         => $this->request->getPost('prioridad') ?? 'normal',
+            'estado'            => $this->request->getPost('estado') ?? 'definida',
+            'fecha_vencimiento' => $this->request->getPost('fecha_vencimiento'),
+            'fecha_recordatorio'=> $this->request->getPost('fecha_recordatorio'),
+            'color'             => $this->request->getPost('color') ?? '#563d7c', // Usando el default de tu vista
+            'id_responsable'    => session()->get('user_id'),
+            // 'fecha_creacion' debería manejarse automáticamente por la base de datos (timestamp) o tu modelo.
         ];
 
         $tareas_db = new Tareas_db();
-        $id_tarea_insertada = $tareas_db->insert($data_tarea, true); 
+        $id_tarea_insertada = $tareas_db->insert($data_tarea, true); // true para que devuelva el ID insertado
 
         if ($id_tarea_insertada) {
-            $colaboradores_json = $this->request->getPost('colaboradores');
-            if ($colaboradores_json) {
-                $colaboradores_emails = json_decode($colaboradores_json, true);
-                if (is_array($colaboradores_emails)) {
-                    $colaboradores_db = new Colaboradores_db();
-                    $notificaciones_db = new Notificaciones_db();
-                    $usuario_db = new Usuario_db();
-                    $nombre_usuario_actual = session()->get('usuario');
-                    $id_usuario_actual = session()->get('user_id');
-
-                    foreach ($colaboradores_emails as $correo) {
-                        if (filter_var($correo, FILTER_VALIDATE_EMAIL)) {
-                            $info_invitado = $usuario_db->Devolver_usuario($correo);
-                            if ($info_invitado && isset($info_invitado['id_user']) && $info_invitado['id_user'] != $id_usuario_actual) {
-                                if (!$colaboradores_db->existeColaborador($id_tarea_insertada, $correo)) {
-                                     if($colaboradores_db->Insertar_colaborador($id_tarea_insertada, $correo, 'pendiente')){
-                                        $mensaje_notif = esc($nombre_usuario_actual) . " te ha invitado a colaborar en la tarea: \"" . esc($data_tarea['asunto']) . "\".";
-                                        $notificaciones_db->crearNotificacion([
-                                            'id_usuario_destino' => $info_invitado['id_user'],
-                                            'tipo_notificacion' => 'invitacion_tarea',
-                                            'mensaje' => $mensaje_notif,
-                                            'id_entidad_principal' => $id_tarea_insertada,
-                                            'tipo_entidad_principal' => 'tarea',
-                                            'id_entidad_relacionada' => $id_usuario_actual,
-                                            'tipo_entidad_relacionada' => 'usuario',
-                                            'datos_adicionales' => json_encode(['nombre_tarea' => $data_tarea['asunto'], 'nombre_invitador' => $nombre_usuario_actual])
-                                        ]);
-                                     }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            $subtareas_data_array = $this->request->getPost('subtareas'); 
-            if (!empty($subtareas_data_array) && is_array($subtareas_data_array)) {
-                $subtareas_db = new Subtareas_db(); // Corregido a Subtareas_db
-                foreach ($subtareas_data_array as $sub_data) {
-                     if (!empty($sub_data['nombre'])) { 
-                        $datasubtarea = [
-                            'id_tarea' => $id_tarea_insertada,
-                            'nombre' => $sub_data['nombre'],
-                            'descripcion' => $sub_data['descripcion'] ?? '',
-                            'prioridad' => $sub_data['prioridad'] ?? 'normal',
-                            'estado' => $sub_data['estado'] ?? 'definida',
-                            'fecha_vencimiento' => !empty($sub_data['vencimiento']) ? $sub_data['vencimiento'] : null,
-                            'comentario' => $sub_data['comentario'] ?? '',
-                            'id_responsable' => session()->get('user_id'), 
-                        ];
-                        $subtareas_db->Insertar_subtarea($datasubtarea);
-                    }
-                }
-            }
-            return redirect()->to(base_url('controlador_tareas/tareas'))
-                             ->with('success', 'Tarea creada con éxito.');
+            // Redirigir a la página de edición de la tarea recién creada
+            return redirect()->to(base_url('controlador_tareas/tareas/editar_tarea/' . $id_tarea_insertada))
+                             ->with('success', 'Tarea principal creada con éxito. Ahora puedes agregar colaboradores y subtareas.');
         } else {
             return redirect()->to(base_url('controlador_tareas/tareas/nueva_tarea'))
-                             ->with('error', 'No se pudo crear la tarea.')
+                             ->with('error', 'No se pudo crear la tarea principal.')
                              ->withInput();
         }
     }

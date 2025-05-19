@@ -41,7 +41,7 @@ public function existeColaborador_subtarea($id_subtarea, $correo)
                 ->countAllResults() > 0;
 }
 
-public function Insertar_subcolaborador($id_subtarea, $correo) {
+public function Insertar_subcolaborador($id_subtarea, $correo, $estado) {
     $usuario_db = new Usuario_db();
     $id_user = $usuario_db->Devolver_usuario($correo);
 
@@ -51,7 +51,7 @@ public function Insertar_subcolaborador($id_subtarea, $correo) {
         $data = [
             'id_subtarea' => $id_subtarea,
             'id_user' => $id_user['id_user'],
-            'estado_colaborador' => 'pendiente'
+            'estado_colaborador' => $estado
         ];
         $result = $builder->insert($data);
         return $result ? true : false;

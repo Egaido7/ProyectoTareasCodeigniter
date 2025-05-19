@@ -47,8 +47,7 @@ if (session()->has('usuario')): // Usar helper de CI4
 
         <div class="container-fluid mt-4">
             <header class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom gap-2">
-                <h1 class="h3 mb-0 me-md-auto">Gestión de Tareas</h1>
-
+                <a href="<?= base_url('controlador_tareas/tareas') ?>" class="h3 mb-0 me-md-auto" style = "text-decoration: none;">Gestión de Tareas</a>
                 <div class="d-flex align-items-center">
                     <a href="<?= base_url('controlador_tareas/tareas/nueva_tarea') ?>" class="btn btn-primary me-3" id="boton-negro">
                         <i class="bi bi-plus-lg"></i> Nueva Tarea
@@ -136,7 +135,6 @@ if (session()->has('usuario')): // Usar helper de CI4
                                 'prioridad' => 'Prioridad',
                                 'fecha_vencimiento' => 'Fecha de Vencimiento',
                                 'estado' => 'Estado',
-                                'fecha_creacion' => 'Fecha de Creación',
                                 'mis_tareas' => 'Mis Tareas',
                                 'colaborador' => 'Tareas como Colaborador'
                             ], old('criterio', ''), ['class' => 'form-select', 'id' => 'ordenar', 'onchange' => 'this.form.submit()']) ?>

@@ -1,4 +1,18 @@
 <!-- filepath: c:\xampp\htdocs\projecto_ci4\app\Views\vistas_tareas\nueva-tarea.php -->
+ <?php
+// CodeIgniter 4 maneja la sesión automáticamente si está configurada.
+if (session()->has('usuario')): // Usar helper de CI4
+    $user_id_actual = session()->get('user_id'); // Obtener el ID del usuario actual una vez
+?>
+
+
+<?php
+else:
+    // El usuario no ha iniciado sesión, redirige a la página de inicio de sesión
+    header('Location: ' . base_url('controlador_tareas/login'));
+    exit();
+endif;
+?>
 <!DOCTYPE html>
 <html lang="es">
 
@@ -38,16 +52,21 @@
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
             </div>
         <?php endif; ?>
-        <?= form_open(base_url('controlador_tareas/tareas/guardar_tarea'), ['method' => 'post']) ?>
+
+        <?= form_open(base_url('controlador_tareas/tareas/crear_tareaprincipal'), ['method' => 'post']) ?>
+        
         <div class="row mb-3">
             <div class="col-md-8">
                 <?= form_label('Asunto o tema <span class="text-danger">*</span>', 'tareaAsunto', ['class' => 'form-label', 'escape' => false]) ?>
-                <?= form_input('asunto', '', [
-                    'class' => 'form-control',
+                <?= form_input('asunto', set_value('asunto'), [
+                    'class' => 'form-control' . (isset($validation) && $validation->hasError('asunto') ? ' is-invalid' : ''),
                     'id' => 'tareaAsunto',
                     'placeholder' => 'Título de la tarea',
-                    'required' => 'required'
-                ], 'text') ?>
+                    'required' => 'required' // Mantenemos required para UX, la validación del server es la clave
+                ]) ?>
+                <?php if (isset($validation) && $validation->hasError('asunto')): ?>
+                    <div class="invalid-feedback"><?= $validation->getError('asunto') ?></div>
+                <?php endif; ?>
             </div>
             <div class="col-md-4">
                 <?= form_label('Estado <span class="text-danger">*</span>', 'tareaEstado', ['class' => 'form-label', 'escape' => false]) ?>
@@ -55,24 +74,25 @@
                     'definida' => 'Definida',
                     'en_progreso' => 'En progreso',
                     'completada' => 'Completada'
-                ], 'definida', [
+                ], set_value('estado', 'definida'), [
                     'class' => 'form-select',
                     'id' => 'tareaEstado',
-                    'required' => 'required'
                 ]) ?>
             </div>
         </div>
 
-
         <div class="mb-3">
-            <?= form_label('Descripción', 'tareaDescripcion', ['class' => 'form-label']) ?>
-            <?= form_textarea('descripcion', '', [
-                'class' => 'form-control',
+            <?= form_label('Descripción <span class="text-danger">*</span>', 'tareaDescripcion', ['class' => 'form-label', 'escape' => false]) ?>
+            <?= form_textarea('descripcion', set_value('descripcion'), [
+                'class' => 'form-control' . (isset($validation) && $validation->hasError('descripcion') ? ' is-invalid' : ''),
                 'id' => 'tareaDescripcion',
                 'rows' => 3,
-
-                'placeholder' => 'Detalle de la tarea a realizar'
+                'placeholder' => 'Detalle de la tarea a realizar',
+                'required' => 'required'
             ]) ?>
+             <?php if (isset($validation) && $validation->hasError('descripcion')): ?>
+                <div class="invalid-feedback"><?= $validation->getError('descripcion') ?></div>
+            <?php endif; ?>
         </div>
 
         <div class="row mb-3">
@@ -82,268 +102,59 @@
                     'baja' => 'Baja',
                     'normal' => 'Normal',
                     'alta' => 'Alta'
-                ], 'normal', [
+                ], set_value('prioridad', 'normal'), [
                     'class' => 'form-select',
                     'id' => 'tareaPrioridad',
-                    'required' => 'required'
                 ]) ?>
             </div>
             <div class="col-md-4">
-                <?= form_label('Fecha de vencimiento', 'tareaVencimiento', ['class' => 'form-label']) ?>
-
-                <?= form_input('fecha_vencimiento', '', [
-                    'class' => 'form-control',
+                <?= form_label('Fecha de vencimiento <span class="text-danger">*</span>', 'tareaVencimiento', ['class' => 'form-label', 'escape' => false]) ?>
+                <?= form_input('fecha_vencimiento', set_value('fecha_vencimiento'), [
+                    'class' => 'form-control' . (isset($validation) && $validation->hasError('fecha_vencimiento') ? ' is-invalid' : ''),
                     'id' => 'tareaVencimiento',
                     'required' => 'required'
                 ], 'date') ?>
+                <?php if (isset($validation) && $validation->hasError('fecha_vencimiento')): ?>
+                    <div class="invalid-feedback"><?= $validation->getError('fecha_vencimiento') ?></div>
+                <?php endif; ?>
             </div>
             <div class="col-md-4">
-                <?= form_label('Fecha de recordatorio', 'tareaRecordatorio', ['class' => 'form-label']) ?>
-
-                <?= form_input('fecha_recordatorio', '', [
-                    'class' => 'form-control',
+                <?= form_label('Fecha de recordatorio <span class="text-danger">*</span>', 'tareaRecordatorio', ['class' => 'form-label', 'escape' => false]) ?>
+                <?= form_input('fecha_recordatorio', set_value('fecha_recordatorio'), [
+                    'class' => 'form-control' . (isset($validation) && $validation->hasError('fecha_recordatorio') ? ' is-invalid' : ''),
                     'id' => 'tareaRecordatorio',
                     'required' => 'required'
                 ], 'date') ?>
-
+                 <?php if (isset($validation) && $validation->hasError('fecha_recordatorio')): ?>
+                    <div class="invalid-feedback"><?= $validation->getError('fecha_recordatorio') ?></div>
+                <?php endif; ?>
             </div>
         </div>
 
         <div class="row mb-4 align-items-end">
-            <div class="col-md-2">
-                <?= form_label('Color', 'tareaColor', ['class' => 'form-label']) ?>
-                <?= form_input('color', '#563d7c', [
+            <div class="col-md-2"> <?= form_label('Color', 'tareaColor', ['class' => 'form-label']) ?>
+                <?= form_input('color', set_value('color', '#563d7c'), [ // Valor por defecto como en tu vista original
                     'class' => 'form-control form-control-color w-100',
                     'id' => 'tareaColor',
                     'title' => 'Elige un color para identificar visualmente la tarea',
-                    'required' => 'required'
                 ], 'color') ?>
             </div>
-            <div class="col-md-12">
-                <?= form_label('Colaboradores', 'tareaColaboradores', ['class' => 'form-label']) ?>
-                <div class="input-group">
-                    <?= form_input('colaboradores', '', [
-                        'class' => 'form-control',
-                        'id' => 'tareaColaboradores',
-                        'placeholder' => 'Correo electrónico'
-                        //'required' => 'required'
-                    ], 'email') ?>
-                    <button class="btn btn-light" type="button" id="btnAgregarColaborador"><i class="bi bi-plus-lg"></i> Añadir</button>
-                </div> 
-                <div id="listaColaboradores" class="mt-2"></div>
-
-                <input type="hidden" name="colaboradores" id="colaboradoresHidden">
-            </div>
         </div>
-
-        <div class="subtasks-form-section card card-body">
-            <h5 class="card-title mb-3">Subtareas</h5>
-            <div id="listaSubtareas"></div>
-
-            <div class="add-subtask-form mt-3 pt-3 border-top">
-                <h6>Añadir nueva subtarea</h6>
-                <div class="mb-2">
-                    <?= form_label('Asunto o nombre de la subtarea <span class="text-danger">*</span>', 'subtareaNombre', ['class' => 'form-label', 'escape' => false]) ?>
-                    <?= form_input('subtarea_nombre', '', [
-                        'class' => 'form-control form-control-sm',
-                        'id' => 'subtareaNombre',
-                        'placeholder' => 'Título de la subtarea',
-                       // 'required' => 'required'
-                    ]) ?>
-                </div>
-                <div class="mb-2">
-                    <?= form_label('Descripción <span class="text-danger">*</span>', 'subtareaDescripcion', ['class' => 'form-label', 'escape' => false]) ?>
-                    <?= form_input('subtarea_descripcion', '', [
-                        'class' => 'form-control form-control-sm',
-                        'id' => 'subtareaDescripcion',
-                        'type' => 'text',
-                        'placeholder' => 'Descripción de la subtarea',
-                        //'required' => 'required'
-                    ]) ?>
-
-                </div>
-                <div class="row mb-2">
-                    <div class="col-md-4">
-                        <?= form_label('Estado', 'subtareaEstado', ['class' => 'form-label']) ?>
-                        <?= form_dropdown('subtarea_estado', [
-                            'definida' => 'Definida',
-                            'en_proceso' => 'En proceso',
-                            'completada' => 'Completada'
-                        ], 'definida', [
-                            'class' => 'form-select form-select-sm',
-                            'id' => 'subtareaEstado'
-                        ]) ?>
-                    </div>
-                    <div class="col-md-4">
-                        <?= form_label('Vencimiento', 'subtareaVencimiento', ['class' => 'form-label']) ?>
-                        <?= form_input('subtarea_fecha_vencimiento', '', [
-                            'class' => 'form-control form-control-sm',
-                            'id' => 'subtareaVencimiento',
-                            //'required' => 'required'
-                        ], 'date') ?>
-                    </div>
-                    <div class="col-md-4">
-                        <?= form_label('Prioridad', 'subtareaPrioridad', ['class' => 'form-label']) ?>
-                        <?= form_dropdown('subtarea_prioridad', [
-                            '' => '(Opcional)',
-                            'baja' => 'Baja',
-                            'normal' => 'Normal',
-                            'alta' => 'Alta'
-                        ], '', [
-                            'class' => 'form-select form-select-sm',
-                            'id' => 'subtareaPrioridad'
-                        ]) ?>
-                    </div>
-                </div>
-                <div class="mb-2">
-                    <?= form_label('Comentario', 'subtareaComentario', ['class' => 'form-label']) ?>
-                    <?= form_input('subtarea_comentario', '', [
-                        'class' => 'form-control form-control-sm',
-                        'id' => 'subtareaComentario',
-                        'type' => 'text',
-                        'placeholder' => 'Añadir comentario o notas (opcional)',
-                       // 'required' => 'required'
-                    ]) ?>
-                
-                </div>
-            
-                  <input type="hidden" name="subtareas" id="subtareasHidden">
-                
-                <button type="button" id="boton-blanco2" class="btn btn-sm btn-dark" >
-                    <i class="bi bi-plus-circle-fill"></i> Añadir subtarea a la lista
-                </button>
-            </div>
-        </div>
-        <?php if (isset($validation)): ?>
+        
+        <?php if (isset($validation) && !empty($validation->getErrors()) && !$validation->hasError('asunto') && !$validation->hasError('descripcion') && !$validation->hasError('fecha_vencimiento') && !$validation->hasError('fecha_recordatorio') ): ?>
             <div class="alert alert-danger">
+                <p>Por favor corrige los siguientes errores:</p>
                 <?= $validation->listErrors() ?>
             </div>
         <?php endif; ?>
 
         <div class="mt-4 d-flex justify-content-end">
             <a href="<?= base_url('controlador_tareas/tareas') ?>" class="btn btn-secondary me-2" id="boton-blanco">Cancelar</a>
-            <button type="submit" class="btn btn-sm btn-dark" id="boton-negro">Crear Tarea</button>
+            <button type="submit" class="btn btn-dark" id="boton-negro">Crear Tarea y Continuar</button>
         </div>
         <?= form_close() ?>
     </div>
 
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <script>
-let subtareas = [];
-
-document.getElementById('boton-blanco2').addEventListener('click', function() {
-    const nombre = document.getElementById('subtareaNombre').value.trim();
-    const descripcion = document.getElementById('subtareaDescripcion').value.trim();
-    const estado = document.getElementById('subtareaEstado').value;
-    const vencimiento = document.getElementById('subtareaVencimiento').value;
-    const prioridad = document.getElementById('subtareaPrioridad').value;
-    const comentario = document.getElementById('subtareaComentario').value.trim();
-   const responsable = document.getElementById('subtareaResponsable')?.value || '';
-
-    if (!nombre || !descripcion) return;
-
-    subtareas.push({
-        nombre,
-        descripcion,
-        estado,
-        vencimiento,
-        prioridad,
-        comentario,
-        responsable
-    });
-
-    actualizarListaSubtareas();
-
-    // Limpiar campos
-    document.getElementById('subtareaNombre').value = '';
-    document.getElementById('subtareaDescripcion').value = '';
-    document.getElementById('subtareaEstado').value = 'definida';
-    document.getElementById('subtareaVencimiento').value = '';
-    document.getElementById('subtareaPrioridad').value = '';
-    document.getElementById('subtareaComentario').value = '';
-});
-
-function actualizarListaSubtareas() {
-    const lista = document.getElementById('listaSubtareas');
-    lista.innerHTML = '';
-    subtareas.forEach((sub, idx) => {
-        const div = document.createElement('div');
-        div.className = 'subtask-item border-bottom pb-2 mb-2 d-flex justify-content-between';
-        div.innerHTML = `
-            <div>
-                <p class="mb-1"><strong>${sub.nombre}</strong></p>
-                <small class="text-muted">Estado: ${sub.estado}</small>
-                ${sub.vencimiento ? `<small class="text-muted"> | Vencimiento: ${sub.vencimiento}</small>` : ''}
-            </div>
-            <button type="button" class="btn btn-sm btn-outline-danger btn-remove-subtask" onclick="eliminarSubtarea(${idx})" title="Eliminar subtarea">✕</button>
-        `;
-        lista.appendChild(div);
-    });
-    const hidden = document.getElementById('subtareasHidden');
-    if (hidden) {
-        hidden.value = JSON.stringify(subtareas);
-           console.log(hidden.value);
-    }
- 
-}
-
-function eliminarSubtarea(idx) {
-    subtareas.splice(idx, 1);
-    actualizarListaSubtareas();
-}
-</script>
-
-
-    <script>
-let colaboradores = [];
-function esEmailValido(email) {
-    // Expresión regular básica para validar email
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-document.getElementById('btnAgregarColaborador').addEventListener('click', function() {
-    const input = document.getElementById('tareaColaboradores');
-    const email = input.value.trim();
-     if (!esEmailValido(email)) {
-        alert('Por favor, ingresa un correo electrónico válido.');
-        return;
-    }
-    if (email && !colaboradores.includes(email)) {
-        colaboradores.push(email);
-        actualizarListaColaboradores();
-        input.value = '';
-    }
-});
-
-function actualizarListaColaboradores() {
-    const lista = document.getElementById('listaColaboradores');
-    lista.innerHTML = '';
-    colaboradores.forEach((correo, idx) => {
-        const div = document.createElement('div');
-        div.className = 'd-flex align-items-center mb-1';
-        div.innerHTML = `
-            <span class="me-2">${correo}</span>
-            <button type="button" class="btn btn-sm btn-danger" onclick="eliminarColaborador(${idx})"><i class="bi bi-trash"></i></button>
-        `;
-        lista.appendChild(div);
-    });
-    // Actualiza el campo oculto con los correos separados por coma o como JSON
-     const hidden = document.getElementById('colaboradoresHidden');
-    if (hidden) {
-        hidden.value = JSON.stringify(colaboradores);
-           console.log(hidden.value);
-        
-    }
- 
-    
-}
-
-function eliminarColaborador(idx) {
-    colaboradores.splice(idx, 1);
-    actualizarListaColaboradores();
-}
-</script>
-</body>
-
+    </body>
 </html>
